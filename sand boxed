@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+# Establish the secure working directory
+WORKDIR /app
+
+# Prevent Python from writing pyc files and keep stdout unbuffered
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Install dependencies (requires docker CLI for nested sandboxing)
+RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the orchestration logic
+COPY . .
+
+# Expose the API port for the Browser Extension
+EXPOSE 8080
+
+# Initiate the Root Orchestrator
+CMD ["python", "main.py"]
