@@ -1,0 +1,47 @@
+import os
+import subprocess
+import threading
+import discord
+import smtplib
+import platform
+import json
+import time
+from flask import Flask, request
+from email.mime.text import MIMEText
+from google.cloud import storage
+import google.generativeai as genai
+
+# --- INITIALIZATION & SECURITY ---
+app = Flask(__name__)
+# Ensure these are set in your GCloud Environment Variables
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+# Config
+BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")
+MY_DISCORD_ID = int(os.getenv("MY_DISCORD_ID", "0")) # Traffic Isolation
+DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID")
+GMAIL_USER = os.getenv("GMAIL_USER")
+GMAIL_PASS = os.getenv("GMAIL_APP_PASSWORD")
+SMS_TARGET = os.getenv("SMS_GATEWAY_ADDRESS")
+
+# --- 1. SYSTEM GRASP (THE CLI HOOK) ---
+def execute_system_grasp(user_request):
+    """Translates natural language to CLI and executes with full system access."""
+    system_context = f"OS: {platform.system()}, Arch: {platform.machine()}, CWD: {os.getcwd()}"
+    
+    prompt = (
+        f"You are the Open Claw System Controller. Context: {system_context}. "
+        f"Task: {user_request}. Return ONLY the raw CLI command for this OS. "
+        f"No markdown, no explanations."
+    )
+    
+    try:
+        raw_command = model.generate_content(prompt).text.strip().replace("`", "")
+        # Execute the command
+        result = subprocess.run(
+            raw_command, shell=True, capture_output=True, text=True, timeout=60
+        )
+        
+        output = result.stdout if result.stdout else result.stderr
+        return f"🖥️ **Executed:** `{raw_command}`\n\n**Output:**\n
