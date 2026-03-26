@@ -3,7 +3,7 @@ version: '3.8'
 services:
   openclaw_sandbox:
     build: .
-    container_name: openclaw_isolated_core
+    container_name: turtleshell_isolated_core
     security_opt:
       - no-new-privileges:true
     environment:
